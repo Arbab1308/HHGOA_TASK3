@@ -38,16 +38,16 @@ class BiometricSecurityVerification:
             
             # Compute texture variance (blur detection)
             # Real faces tend to have higher variance/texture than flat printed photos
-            texture_variance = np.var(cv2.Laplacian(gray, cv2.CV_64F))
+            texture_variance = float(np.var(cv2.Laplacian(gray, cv2.CV_64F)))
             
             # Simple thresholding logic for simulation
             # Normally we would tune this threshold (e.g., 100) based on dataset
-            liveness_score = min(texture_variance / 500.0, 1.0) 
+            liveness_score = float(min(texture_variance / 500.0, 1.0))
             
             return {
-                "liveness_detected": liveness_score > 0.4,
-                "confidence": round(liveness_score, 3),
-                "texture_variance": round(texture_variance, 2)
+                "liveness_detected": bool(liveness_score > 0.4),
+                "confidence": float(round(liveness_score, 3)),
+                "texture_variance": float(round(texture_variance, 2))
             }
         except Exception as e:
             logger.error(f"Liveness detection failed: {e}")
