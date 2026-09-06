@@ -419,15 +419,15 @@
             resultsView.style.display = 'block';
             
             // Extract data
-            const social = data.steps.social_search.top_match;
-            const blockchain = data.steps.blockchain_verification;
+            const social = data.steps.social_search.result ? data.steps.social_search.result.top_match : data.steps.social_search.top_match;
+            const blockchain = data.steps.blockchain_verification.result ? data.steps.blockchain_verification.result : data.steps.blockchain_verification;
             
             // Populate UI
-            document.getElementById('discovery-platform').textContent = social.platform;
-            document.getElementById('res-username').textContent = social.username;
-            document.getElementById('res-engagement').textContent = `${social.likes} L / ${social.comments} C`;
+            document.getElementById('discovery-platform').textContent = social.platform || 'Unknown';
+            document.getElementById('res-username').textContent = social.username || 'Unknown';
+            document.getElementById('res-engagement').textContent = `${social.likes || 0} L / ${social.comments || 0} C`;
             
-            document.getElementById('res-network').textContent = blockchain.blockchain;
+            document.getElementById('res-network').textContent = blockchain.blockchain || 'Unknown';
             document.getElementById('res-tx').textContent = truncateStr(blockchain.transaction_hash);
             document.getElementById('res-hash').textContent = truncateStr(blockchain.data_hash);
             
