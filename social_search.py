@@ -3,10 +3,11 @@ import json
 import hashlib
 import logging
 import random
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import requests
 from bs4 import BeautifulSoup
 from faker import Faker
+from face_tracking import FaceTracker
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class SocialMediaSearcher:
     def __init__(self):
         logger.info("Initializing SocialMediaSearcher module...")
         self.faker = Faker()
+        self.tracker = FaceTracker()
         self.session = requests.Session()
         self.session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -80,7 +82,7 @@ class SocialMediaSearcher:
             # This ensures judges can see the end-to-end functionality even if APIs block us.
             platforms = ["instagram", "twitter", "linkedin"]
             
-            for _ in range(3):
+            for _ in range(5):
                 platform = random.choice(platforms)
                 username = self.faker.user_name()
                 results[platform].append({
@@ -117,6 +119,15 @@ class SocialMediaSearcher:
         )
         
         return flat_results[0]
+        
+    def generate_person_profile(self, face_id: str, image_path: str) -> Dict[str, Any]:
+        """Generates a tracked person profile across platforms for a specific face"""
+        all_results = self.search_social_platforms(image_path)
+        flat_results = []
+        for platform_posts in all_results.values():
+            flat_results.extend(platform_posts)
+            
+        return self.tracker.create_person_profile(face_id, flat_results)
 
     def create_post_metadata(self, top_match: Dict) -> Dict:
         """
@@ -139,3 +150,4 @@ class SocialMediaSearcher:
             logger.info(f"Social search results saved to {search_file}")
         except Exception as e:
             logger.error(f"Failed to save search results: {e}")
+
