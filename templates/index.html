@@ -123,14 +123,75 @@
             animation: fadeIn 0.5s ease forwards;
         }
 
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 2px solid var(--border-color);
-            border-top-color: var(--accent-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1.5rem;
+        .pipeline-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 2rem 0;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+        }
+
+        .step-box {
+            padding: 0.75rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .flow-step.active .step-box {
+            color: #fff;
+            border-color: transparent;
+            background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 100%);
+            box-shadow: 0 0 20px rgba(142, 45, 226, 0.6);
+            transform: scale(1.05);
+            animation: pulse-gradient 2s infinite;
+        }
+
+        .flow-step.done .step-box {
+            color: #fff;
+            border-color: var(--success-color);
+            background: rgba(76, 217, 100, 0.15);
+            box-shadow: 0 0 10px rgba(76, 217, 100, 0.2);
+        }
+
+        .flow-arrow {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            opacity: 0.3;
+            margin: 0 0.2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .flow-step.active ~ .flow-arrow {
+            opacity: 0.3;
+            color: var(--text-secondary);
+            text-shadow: none;
+        }
+
+        .flow-step.done + .flow-arrow {
+            color: var(--success-color);
+            opacity: 1;
+            text-shadow: 0 0 8px rgba(76, 217, 100, 0.4);
+        }
+
+        @keyframes pulse-gradient {
+            0% { box-shadow: 0 0 15px rgba(142, 45, 226, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(142, 45, 226, 0.8); }
+            100% { box-shadow: 0 0 15px rgba(142, 45, 226, 0.4); }
         }
 
         .status-text {
@@ -138,6 +199,8 @@
             font-size: 0.9rem;
             letter-spacing: 0.05em;
             text-transform: uppercase;
+            margin-top: 1rem;
+            transition: opacity 0.3s ease;
         }
 
         /* Results State */
@@ -229,10 +292,6 @@
         }
 
         /* Animations */
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -252,6 +311,7 @@
             display: none;
             border: 2px solid var(--border-color);
             object-fit: cover;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -275,8 +335,29 @@
         <!-- Loading View -->
         <div class="loading-container" id="loading-view">
             <img id="image-preview" src="" alt="Preview">
-            <div class="spinner"></div>
-            <p class="status-text" id="loading-status">Analyzing Face Encodings...</p>
+            
+            <div class="pipeline-flow">
+                <div class="flow-step" id="step-detect">
+                    <div class="step-box">Face Det</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                
+                <div class="flow-step" id="step-osint">
+                    <div class="step-box">OSINT Engine</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                
+                <div class="flow-step" id="step-ipfs">
+                    <div class="step-box">IPFS Hash</div>
+                </div>
+                <div class="flow-arrow">➔</div>
+                
+                <div class="flow-step" id="step-chain">
+                    <div class="step-box">Verify</div>
+                </div>
+            </div>
+            
+            <p class="status-text" id="loading-status">Initiating Pipeline...</p>
         </div>
 
         <!-- Results View -->
@@ -375,8 +456,26 @@
             uploadFile(file);
         }
 
-        function setStatus(text) {
+        function setStatus(text, stepId) {
             loadingStatus.style.opacity = 0;
+            
+            // Deactivate all first
+            document.querySelectorAll('.flow-step').forEach(el => el.classList.remove('active'));
+            
+            if (stepId) {
+                const currentStep = document.getElementById(stepId);
+                if (currentStep) currentStep.classList.add('active');
+                
+                // Mark previous steps as done
+                let sibling = currentStep.previousElementSibling;
+                while (sibling) {
+                    if (sibling.classList.contains('flow-step')) {
+                        sibling.classList.add('done');
+                    }
+                    sibling = sibling.previousElementSibling;
+                }
+            }
+            
             setTimeout(() => {
                 loadingStatus.textContent = text;
                 loadingStatus.style.opacity = 1;
@@ -388,10 +487,17 @@
             uploadView.style.display = 'none';
             loadingView.style.display = 'block';
             
-            // Simulate steps for UI feel
-            setTimeout(() => setStatus("Executing Social Discovery..."), 1500);
-            setTimeout(() => setStatus("Uploading to Blockchain..."), 3000);
-            setTimeout(() => setStatus("Verifying Hash..."), 4500);
+            // Reset blocks
+            document.querySelectorAll('.flow-step').forEach(el => {
+                el.classList.remove('active', 'done');
+            });
+            
+            setStatus("Extracting biometric encodings...", "step-detect");
+            
+            // Start OSINT visually after a short delay (FaceDet is fast)
+            setTimeout(() => {
+                setStatus("Driving Headless Browser for OSINT...", "step-osint");
+            }, 2500);
 
             const formData = new FormData();
             formData.append('image', file);
@@ -404,11 +510,25 @@
                 
                 const data = await response.json();
                 
-                if (data.status === 'success') {
-                    displayResults(data);
-                } else {
-                    showError(data.error || "Verification failed");
-                }
+                // When fetch returns, pipeline is completely done
+                // Flash the last two steps very quickly before showing results for visual effect
+                setStatus("Generating IPFS Content Hash...", "step-ipfs");
+                
+                setTimeout(() => {
+                    setStatus("Securing on Blockchain...", "step-chain");
+                }, 400);
+                
+                setTimeout(() => {
+                    document.getElementById('step-chain').classList.remove('active');
+                    document.getElementById('step-chain').classList.add('done');
+                    
+                    if (data.status === 'success') {
+                        displayResults(data);
+                    } else {
+                        showError(data.error || "Verification failed");
+                    }
+                }, 800);
+                
             } catch (error) {
                 showError("Network or Server error occurred");
             }
